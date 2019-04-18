@@ -9,12 +9,9 @@
     dma_from_device.c   ：官方驱动调用的程序
     dma_to_device.c     ：官方驱动调用的程序
 *   face_dpu_driver.c   ：配置dpu的主要驱动程序
-    hw_log_c2h.txt      ：官方驱动的记录文件
-    hw_log_h2c.txt      ：官方驱动的记录文件
     load_driver.sh      ：官方驱动调用的脚本
 *   Makefile            ：编译文件
     performance.c       ：官方驱动调用的程序
-    perform_hwcount.sh  ：官方驱动调用的脚本
     reg_rw.c            ：官方驱动调用的程序
     run_test.sh         ：官方驱动调用的脚本
 *   test.py             ：调用dpu实现人脸识别任务的主要脚本
