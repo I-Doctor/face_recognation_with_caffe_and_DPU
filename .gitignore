@@ -1,3 +1,7 @@
+# user costumize
+*output/*
+*.swp
+
 # Prerequisites
 *.d
 
