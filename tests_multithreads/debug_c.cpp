@@ -62,7 +62,7 @@ using namespace cv;
 #define INST2_DDR_ADDR 0xED000000
 #define DATA2_DDR_ADDR 0xEA000000
 #define WEIT2_DDR_ADDR 0xE0000000
-double THRESHOLD = 0.38;
+double THRESHOLD = 0.29;
 
 /* ltoh: little to host   htol: little to host */
 #if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -133,22 +133,22 @@ int main(int argc, char* argv[]){
 
     // check arguements
     if (argc == 3){
-        printf("=====Start application WITHOUT saving or showing: \n");
+        printf("=====Start application WITHOUT saving or showing: ======\n");
         printf("=====process %s and write results into %s \n",argv[1],argv[2]);
     }
     else if (argc==4 && 0==strcmp(argv[3],"save")){
         save_flag = 1;
-        printf("=====Start application WITH saving image WITHOUT showing: \n");
+        printf("=====Start application WITH saving image WITHOUT showing: ======\n");
         printf("=====process %s and write results into %s \n",argv[1],argv[2]);
     }
     else if (argc==5 && 0==strcmp(argv[4],"show")){
         save_flag = 1;
         show_flag = 1;
-        printf("=====Start application WITH saving image WITH showing: \n");
+        printf("=====Start application WITH saving image WITH showing: =====\n");
         printf("=====process %s and write results into %s \n",argv[1],argv[2]);
     }
     else {
-        printf("=====Please give the arguements as follow:\n");
+        printf("=====Please give the arguements as follow: \n");
         printf("=====basic       : ./dpu_face_app input_list.txt results.txt\n");
         printf("=====save image  : ./dpu_face_app input_list.txt results.txt save\n");
         printf("=====save & show : ./dpu_face_app input_list.txt results.txt save show\n");
@@ -161,7 +161,7 @@ int main(int argc, char* argv[]){
 
     // start---------------------------------------------------------------
     // config dpu
-    printf(" -@@Write init weights and insts into ddr.");
+    printf("  -@@Write init weights and insts into ddr.");
     test_dma_to_device("/dev/xdma0_h2c_0", WEIT1_DDR_ADDR, 23859120,0,1, "../../weight/concat_svd_weight.bin");
     test_dma_to_device("/dev/xdma0_h2c_0", WEIT2_DDR_ADDR, 23859120,0,1, "../../weight/concat_svd_weight.bin");
     printf("    weight_ok");
@@ -191,16 +191,16 @@ int main(int argc, char* argv[]){
     gettimeofday(&end, NULL );  
     timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) 
             + end.tv_usec - start.tv_usec;  
-    printf("  ##Finish. [Init] time: %f\n",timeuse /1000000.0); 
+    printf("   ##Finish. [Init] time: %f\n",timeuse /1000000.0); 
 
     // calculate---------------------------------------------------------------
     // calculating pairs
     for(int pair=0; pair<pic_pairs.size(); pair++){
 
-        printf(" -@@Start calculating pair [%d]--------------------- .\n", pair);
+        printf("  -@@Start calculating pair [%d]--------------------- .\n", pair);
 
         // preprocessing-------------------------------------------------------
-        printf("    -@@Start preprocessing.\n");
+        printf("     -@@Start preprocessing.\n");
         string picture_1, picture_2;
         stringstream input(pic_pairs[pair]);
         input>>picture_1;
@@ -243,7 +243,7 @@ int main(int argc, char* argv[]){
         gettimeofday(&end, NULL );  
         timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) 
                 + end.tv_usec - start.tv_usec;  
-        printf("     ##Finish. [Process] time: %f\n",timeuse /1000000.0); 
+        printf("      ##Finish. [Process] time: %f\n",timeuse /1000000.0); 
 
         //image_1.forEach<Pixel>(Operator_1());
         //cvtColor(image1, image2, CV_RGB2GRAY);
@@ -258,7 +258,7 @@ int main(int argc, char* argv[]){
         int inited;
         int inited_1, inited_2;
         // write data into ddr ------------------------------------------------
-        printf("    -@@Write data into ddr.\n");
+        printf("     -@@Write data into ddr.\n");
         printf("       Write input_1 into ddr.\n");
         test_dma_to_device("/dev/xdma0_h2c_0",DATA1_DDR_ADDR,0x24c00,0,1,"/dev/shm/input_0_1.bin");
         printf("       Write input_2 into ddr.\n");
@@ -267,10 +267,10 @@ int main(int argc, char* argv[]){
         gettimeofday(&end, NULL );  
         timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) 
                 + end.tv_usec - start.tv_usec;  
-        printf("     ##Write [data] time: %f\n",timeuse /1000000.0); 
+        printf("      ##Write [data] time: %f\n",timeuse /1000000.0); 
 
         // write config to check inited -----------------------------------------------
-        printf("    -@@Write config into GPIO \n");
+        printf("     -@@Write config into GPIO \n");
         reg_write("/dev/xdma0_user",0x0000,0x0);  // ideal state: no config
         reg_write("/dev/xdma0_user",0x1000,0x0);  // ideal state: no config
         inited_1 = reg_read("/dev/xdma0_user",0x0000) & 0x1;// check inited
@@ -319,10 +319,10 @@ int main(int argc, char* argv[]){
         gettimeofday(&end, NULL );  
         timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) 
                 + end.tv_usec - start.tv_usec;  
-        printf("     ##Runing [DPU] time=%f\n",timeuse /1000000.0); 
+        printf("      ##Runing [DPU] time=%f\n",timeuse /1000000.0); 
 
         // read results from DPU ------------------------------------------------
-        printf("    -@@Read results from ddr\n");
+        printf("     -@@Read results from ddr\n");
         test_dma_from_device("/dev/xdma0_c2h_0", DATA1_DDR_ADDR + 4608, 
         4096, 0, 1, "/dev/shm/out_0_1.bin");
         test_dma_from_device("/dev/xdma0_c2h_0", DATA2_DDR_ADDR + 4608, 
@@ -331,10 +331,10 @@ int main(int argc, char* argv[]){
         gettimeofday(&end, NULL );  
         timeuse = 1000000 * ( end.tv_sec - start.tv_sec )
                 + end.tv_usec - start.tv_usec;  
-        printf("     ##Read [data] time: %f\n",timeuse /1000000.0); 
+        printf("      ##Read [data] time: %f\n",timeuse /1000000.0); 
 
         // calculate the result and save into file-------------------------------
-        printf("    -@@Calculate the result\n");
+        printf("     -@@Calculate the result\n");
         // read results from out files
         Mat result_1(1,4096, CV_8UC1);
         Mat result_2(1,4096, CV_8UC1);
@@ -355,28 +355,35 @@ int main(int argc, char* argv[]){
         //cout<<result_1<<endl;
         printf("       Read results from output file.\n");
         double cos = getSimilarity(result_1, result_2); 
-        printf("  ##[cos]: %f \n", cos);
+        printf("   ##[cos]: %f \n", cos);
         string result = "different";
         if (cos > THRESHOLD){
             result = "same"; 
         }
         printf("       Save final result into result file.\n");
         // save final result into result file
+        int name_s, name_e;
+        name_s = picture_1.find_last_of("/"); 
+        name_e = picture_1.find_last_of("."); 
+        picture_1 = picture_1.substr(name_s+1,name_e-name_s-1);
+        name_s = picture_2.find_last_of("/"); 
+        name_e = picture_2.find_last_of("."); 
+        picture_2 = picture_2.substr(name_s+1,name_e-name_s-1);
         output_results << picture_1 <<"  "<< picture_2 << "  " << result << endl;
 
         gettimeofday(&end, NULL );  
         timeuse = 1000000 * ( end.tv_sec - start.tv_sec )
                 + end.tv_usec - start.tv_usec; 
-        printf("     ##Calculate [result] time: %f\n",timeuse /1000000.0);
+        printf("      ##Calculate [result] time: %f\n",timeuse /1000000.0);
 
         // save result in image and show -----------------------------------------
         if (save_flag) {
-            printf("    -@@Save the image\n");
-            save_img(img_1,img_2, result, "output/"+picture_1, show_flag);
+            printf("     -@@Save the image\n");
+            save_img(img_1,img_2, result, "output/"+picture_1+picture_2+".jpg", show_flag);
             gettimeofday(&end, NULL ); 
             timeuse = 1000000 * ( end.tv_sec - start.tv_sec )
                     + end.tv_usec - start.tv_usec;  
-            printf("     ##Save [image] time %f\n",timeuse /1000000.0); 
+            printf("      ##Save [image] time %f\n",timeuse /1000000.0); 
         }
     }
 
@@ -626,6 +633,7 @@ int ceil_to(int x, int y)
     return x % y ? x + y - x % y : x;
 }
 
+
 void save_img(Mat &src1, Mat &src2, string info, string name, bool show_flag)
 {
     // calculate the rows and cols of new picture
@@ -642,6 +650,7 @@ void save_img(Mat &src1, Mat &src2, string info, string name, bool show_flag)
     putText(dst, info, Point(180,12), CV_FONT_HERSHEY_PLAIN, 1, Scalar(255,255,255) );
     
     // save and show
+    cout<<name<<endl;
     imwrite(name, dst);
     if (show_flag) {
 	printf("       show image \n");
@@ -656,10 +665,10 @@ double getSimilarity(const Mat& first,const Mat& second)
 {
     //cout<<first <<endl;
     double dotSum = first.dot(second);//内积
-    printf("dot:%f    ",dotSum);
+    //printf("dot:%f    ",dotSum);
     double normFirst  = norm(first);//取模
     double normSecond = norm(second); 
-    printf("norm:%f , %f    ",normFirst,normSecond);
+    //printf("norm:%f , %f    ",normFirst,normSecond);
     if(normFirst!=0 && normSecond!=0){
         return dotSum/(normFirst*normSecond);
     }
