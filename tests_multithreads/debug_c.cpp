@@ -19,10 +19,8 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <getopt.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include <time.h>
 #include <byteswap.h>
@@ -34,7 +32,6 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <math.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -44,6 +41,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <queue>
 
 
 //---------------------------------------------------------------------
@@ -51,6 +49,7 @@
 //---------------------------------------------------------------------
 using namespace std;
 using namespace cv;
+
 
 //---------------------------------------------------------------------
 // define
@@ -62,8 +61,8 @@ using namespace cv;
 #define INST2_DDR_ADDR 0xED000000
 #define DATA2_DDR_ADDR 0xEA000000
 #define WEIT2_DDR_ADDR 0xE0000000
-double THRESHOLD = 0.29;
 
+/* define of some simple functions */
 /* ltoh: little to host   htol: little to host */
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #  define ltohl(x)       (x)
@@ -86,10 +85,41 @@ double THRESHOLD = 0.29;
 
 
 //---------------------------------------------------------------------
-// declare
+// my class and struct
 //---------------------------------------------------------------------
+class MyMat
+{
+public:
+    Mat _mat;
+    // default constructor
+    MyMat() {}
+    // copy constructor overload (USED BY Push)
+    MyMat(const MyMat& src) {
+        src.copyTo(m_mat);
+    }
+    // Assignment (=) Operator overloading (USED BY Pop)
+    MyMat& operator=(const MyMat&src) {
+        src.copyTo(m_mat);
+        return *this;
+    }
+}
+
+
+//---------------------------------------------------------------------
+// global varibale
+//---------------------------------------------------------------------
+double THRESHOLD = 0.29;
 static bool save_flag = 0;
 static bool show_flag = 0;
+queue<MyMat> processed_imgs_1;
+queue<MyMat> processed_imgs_2;
+queue<String> img_names_1;
+queue<String> img_names_2;
+
+
+//---------------------------------------------------------------------
+// declaration of functions
+//---------------------------------------------------------------------
 static int test_dma_to_device(const char *devicename, uint32_t addr, uint32_t size, uint32_t offset, uint32_t count, const char *filename);
 static int test_dma_from_device(const char *devicename, uint32_t addr, uint32_t size, uint32_t offset, uint32_t count, const char *filename);
 static int reg_read(const char *devicename , uint32_t addr);
@@ -97,33 +127,6 @@ static int reg_write(const char *devicename , uint32_t addr,uint32_t writeval);
 static void timespec_sub(struct timespec *t1, const struct timespec *t2);
 static void save_img(Mat &src1, Mat &src2, string info, string name, bool show_flag);
 static double getSimilarity(const Mat& first, const Mat& second);
-//float * array_reshape(const char * src, int length, int row, int col, int channel);
-//float * file_reshape(int fid, int row, int col, int channel);
-//static uint32_t getopt_integer(const char *optarg);
-//int ceil_to(int x, int y);
-/*
-typedef Point3_<uint8_t> Pixel;
-struct Operator_1 {
-    void operator_1 ()(Pixel &pixel, const int * position) const
-    {    
-        if (position[0]==position[1]){
-            cout<<pixel.x<<endl;
-        }
-    }
-};*/
-Mat   BGRToRGB(Mat img) { 
-    Mat image(img.rows, img.cols, CV_8UC3); 
-    for(int i=0; i<img.rows; ++i) { //获取第i行首像素指针 
-        Vec3b *p1 = img.ptr<Vec3b>(i); 
-        Vec3b *p2 = image.ptr<Vec3b>(i); 
-        for(int j=0; j<img.cols; ++j) { //将img的bgr转为image的rgb 
-            p2[j][2] = p1[j][0]; 
-            p2[j][1] = p1[j][1]; 
-            p2[j][0] = p1[j][2]; 
-        } 
-    } 
-    return image; 
-}
 
 
 //---------------------------------------------------------------------
@@ -131,7 +134,7 @@ Mat   BGRToRGB(Mat img) {
 //---------------------------------------------------------------------
 int main(int argc, char* argv[]){
 
-    // check arguements
+    // check arguements------------------------------------------------------
     if (argc == 3){
         printf("=====Start application WITHOUT saving or showing: ======\n");
         printf("=====process %s and write results into %s \n",argv[1],argv[2]);
@@ -155,121 +158,115 @@ int main(int argc, char* argv[]){
         return 0;
     }
 
-    struct timeval start,end;  
-    gettimeofday(&start, NULL);  
-    long timeuse;
 
-    // start---------------------------------------------------------------
+    // start init------------------------------------------------------------
+    long timeuse;
+    struct timeval start,end; 
+    gettimeofday(&start, NULL);  
+
     // config dpu
-    printf("  -@@Write init weights and insts into ddr.");
+    printf("  --@@Write init weights and insts into ddr.");
     test_dma_to_device("/dev/xdma0_h2c_0", WEIT1_DDR_ADDR, 23859120,0,1, "../../weight/concat_svd_weight.bin");
     test_dma_to_device("/dev/xdma0_h2c_0", WEIT2_DDR_ADDR, 23859120,0,1, "../../weight/concat_svd_weight.bin");
-    printf("    weight_ok");
+    printf("      weight_ok");
     test_dma_to_device("/dev/xdma0_h2c_0", INST1_DDR_ADDR, 257644, 0,1, "../../weight/concat_svd_instr.bin");
     test_dma_to_device("/dev/xdma0_h2c_0", INST2_DDR_ADDR, 257644, 0,1, "../../weight/concat_svd_instr.bin");
-    printf("    instr_ok \n");
+    printf("      instr_ok \n");
 
-    // read input list into vector pic_pairs
-    printf("    Read input list into vector.\n");
+    // read input list into vector pic_path_pairs
+    printf("      Read input list into vector.\n");
     ifstream input_list(argv[1]); 
     if(!input_list) { 
         cerr << "Can't open the file.\n"; 
         FATAL; 
     }
     string line; 
-    vector<string> pic_pairs; 
+    vector<string> img_path_pairs; 
     while(getline(input_list, line)) 
-        pic_pairs.push_back(line);
+        pic_path_pairs.push_back(line);
     input_list.close();
+
     // open output results file
     ofstream output_results(argv[2]); 
     if(!output_results) { 
         cerr << "Can't open output file.\n"; 
         FATAL; 
     }
+    
+    // Init time
+    gettimeofday(&end, NULL);  
+    timeuse = 1000000*(end.tv_sec-start.tv_sec)+end.tv_usec-start.tv_usec;  
+    printf("     ##Finish. [Init] time: %f\n",timeuse /1000000.0); 
 
-    gettimeofday(&end, NULL );  
-    timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) 
-            + end.tv_usec - start.tv_usec;  
-    printf("   ##Finish. [Init] time: %f\n",timeuse /1000000.0); 
 
-    // calculate---------------------------------------------------------------
-    // calculating pairs
-    for(int pair=0; pair<pic_pairs.size(); pair++){
+    // calculating pairs-------------------------------------------------------
+    for(int pair=0; pair<img_path_pairs.size(); pair++){
 
-        printf("  -@@Start calculating pair [%d]--------------------- .\n", pair);
+        printf("  --@@Start calculating pair [%d]--------------------- .\n", pair);
 
         // preprocessing-------------------------------------------------------
-        printf("     -@@Start preprocessing.\n");
-        string picture_1, picture_2;
-        stringstream input(pic_pairs[pair]);
-        input>>picture_1;
-        input>>picture_2;
+        // get images name
+        printf("      --@@Start preprocessing.\n");
+        string img_path_1, img_path_2;
+        stringstream input(img_path_pairs[pair]);
+        input >> img_path_1;
+        input >> img_path_2;
+
         // read images
         Mat image_1, image_2;
-        image_1 = imread(picture_1, CV_LOAD_IMAGE_COLOR );
-        image_2 = imread(picture_2, CV_LOAD_IMAGE_COLOR );
+        image_1 = imread(img_path_1, CV_LOAD_IMAGE_COLOR );
+        image_2 = imread(img_path_2, CV_LOAD_IMAGE_COLOR );
         if (image_1.empty() || image_2.empty()) {
             cerr << "Image data error.\n";
             FATAL;
         }
-        //cout<<(CV_8U==image_1.depth())<<endl;
-        //cout<<(CV_8UC3==image_1.type())<<endl;
-        //cout<<(3==image_1.elemSize())<<endl;
-        // resize and store images
-        Mat img_1, img_2;
-        resize(image_1, img_1, Size(224,224),0,0,CV_INTER_AREA);
-        resize(image_2, img_2, Size(224,224),0,0,CV_INTER_AREA);
-        img_1 = img_1/2;
-        img_2 = img_2/2;
-        ofstream input_1, input_2;
-        input_1.open("/dev/shm/input_0_1.bin", ios::out | ios::binary);
-        input_2.open("/dev/shm/input_0_2.bin", ios::out | ios::binary);
-        if (!input_1 || !input_2) {
+
+        // process and store images
+        MyMat img_1, img_2;
+        resize(image_1, img_1._mat, Size(224,224),0,0, CV_INTER_AREA);
+        resize(image_2, img_2._mat, Size(224,224),0,0, CV_INTER_AREA);
+        img_1._mat = img_1._mat/2;
+        img_2._mat = img_2._mat/2;
+        
+        ofstream input_bin_1, input_bin_2;
+        string input_bin_name_1, input_bin_name_2;
+        sprintf(input_bin_name_1, "/dev/shm/input_%d_1.bin", pair%10);
+        sprintf(input_bin_name_2, "/dev/shm/input_%d_2.bin", pair%10);
+        input_bin_1.open(input_bin_name_1, ios::out | ios::binary);
+        input_bin_2.open(input_bin_name_2, ios::out | ios::binary);
+        if (!input_bin_1 || !input_bin_2) {
             cerr << "failed to creat input data file" << endl;
             FATAL;
         }
-        for(int i=0;i<img_1.rows;i++){
-            for(int j=0;j<img_1.cols;j++){
-                //cout<<i<<","<<j<<" "<<(int)(img_1.at<Vec3b>(i,j)[2])<<endl;
-                //cout<<sizeof(img_1.at<Vec3b>(i,j)[2])<<endl;
-                input_1.write((char*)&(img_1.at<Vec3b>(i,j)), 3*sizeof(char));
-                input_2.write((char*)&(img_2.at<Vec3b>(i,j)), 3*sizeof(char));
+        for(int i=0;i<img_1._mat.rows;i++){
+            for(int j=0;j<img_1._mat.cols;j++){
+                input_bin_1.write((char*)&(img_1._mat.at<Vec3b>(i,j)), 3*sizeof(char));
+                input_bin_2.write((char*)&(img_2._mat.at<Vec3b>(i,j)), 3*sizeof(char));
             }
         }
-        input_1.close();
-        input_2.close();
+        input_bin_1.close();
+        input_bin_2.close();
 
         gettimeofday(&end, NULL );  
-        timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) 
-                + end.tv_usec - start.tv_usec;  
+        timeuse = 1000000*(end.tv_sec-start.tv_sec)+end.tv_usec-start.tv_usec;  
         printf("      ##Finish. [Process] time: %f\n",timeuse /1000000.0); 
 
-        //image_1.forEach<Pixel>(Operator_1());
-        //cvtColor(image1, image2, CV_RGB2GRAY);
-        /*
-        namedWindow("image_1", CV_WINDOW_AUTOSIZE);
-        namedWindow("img_1", CV_WINDOW_AUTOSIZE);
-        imshow("image_1", image_1);
-        imshow("img_1", img_1);
-        */
 
         // calculate with dpu ------------------------------------------------
         int inited;
         int inited_1, inited_2;
-        // write data into ddr ------------------------------------------------
+        // write data into ddr -----------------------------------------------
         printf("     -@@Write data into ddr.\n");
         printf("       Write input_1 into ddr.\n");
-        test_dma_to_device("/dev/xdma0_h2c_0",DATA1_DDR_ADDR,0x24c00,0,1,"/dev/shm/input_0_1.bin");
+        test_dma_to_device("/dev/xdma0_h2c_0",DATA1_DDR_ADDR,0x24c00,0,1,input_bin_name_1);
         printf("       Write input_2 into ddr.\n");
-        test_dma_to_device("/dev/xdma0_h2c_0",DATA2_DDR_ADDR,0x24c00,0,1,"/dev/shm/input_0_2.bin");
+        test_dma_to_device("/dev/xdma0_h2c_0",DATA2_DDR_ADDR,0x24c00,0,1,input_bin_name_2);
 
         gettimeofday(&end, NULL );  
-        timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) 
-                + end.tv_usec - start.tv_usec;  
+        timeuse = 1000000*(end.tv_sec-start.tv_sec)+end.tv_usec-start.tv_usec;  
         printf("      ##Write [data] time: %f\n",timeuse /1000000.0); 
 
-        // write config to check inited -----------------------------------------------
+        // write config to run dpu  ------------------------------------------
         printf("     -@@Write config into GPIO \n");
         reg_write("/dev/xdma0_user",0x0000,0x0);  // ideal state: no config
         reg_write("/dev/xdma0_user",0x1000,0x0);  // ideal state: no config
@@ -317,50 +314,48 @@ int main(int argc, char* argv[]){
         reg_write("/dev/xdma0_user",0x1000,0x0);     // return to ideal
 
         gettimeofday(&end, NULL );  
-        timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) 
-                + end.tv_usec - start.tv_usec;  
+        timeuse = 1000000*(end.tv_sec-start.tv_sec)+end.tv_usec-start.tv_usec;  
         printf("      ##Runing [DPU] time=%f\n",timeuse /1000000.0); 
 
         // read results from DPU ------------------------------------------------
         printf("     -@@Read results from ddr\n");
-        test_dma_from_device("/dev/xdma0_c2h_0", DATA1_DDR_ADDR + 4608, 
-        4096, 0, 1, "/dev/shm/out_0_1.bin");
-        test_dma_from_device("/dev/xdma0_c2h_0", DATA2_DDR_ADDR + 4608, 
-        4096, 0, 1, "/dev/shm/out_0_2.bin");
+        string out_bin_name_1, out_bin_name_2;
+        sprintf(out_bin_name_1, "/dev/shm/out_%d_1.bin", pair%10);
+        sprintf(out_bin_name_2, "/dev/shm/out_%d_2.bin", pair%10);
+        test_dma_from_device("/dev/xdma0_c2h_0",DATA1_DDR_ADDR+4608,4096,0,1, out_bin_name_1);
+        test_dma_from_device("/dev/xdma0_c2h_0",DATA2_DDR_ADDR+4608,4096,0,1, out_bin_name_2);
 
         gettimeofday(&end, NULL );  
-        timeuse = 1000000 * ( end.tv_sec - start.tv_sec )
-                + end.tv_usec - start.tv_usec;  
+        timeuse = 1000000*(end.tv_sec-start.tv_sec)+end.tv_usec-start.tv_usec;  
         printf("      ##Read [data] time: %f\n",timeuse /1000000.0); 
+
 
         // calculate the result and save into file-------------------------------
         printf("     -@@Calculate the result\n");
         // read results from out files
         Mat result_1(1,4096, CV_8UC1);
         Mat result_2(1,4096, CV_8UC1);
-        ifstream input_result_1("/dev/shm/out_0_1.bin", ios::in | ios::binary);
-        ifstream input_result_2("/dev/shm/out_0_2.bin", ios::out | ios::binary);
+        ifstream out_bin_1(out_bin_name_1, ios::in  | ios::binary);
+        ifstream out_bin_2(out_bin_name_2, ios::out | ios::binary);
         if (!input_result_1 || !input_result_2) {
             cerr << "failed to open out result file" << endl;
             FATAL;
         }
-        input_result_1.read((char*)result_1.data, 4096*sizeof(char));        
-        input_result_2.read((char*)result_2.data, 4096*sizeof(char));        
-        input_result_1.close();
-        input_result_2.close();
-        Mat result_1_f(1,4096, CV_32FC1);
-        Mat result_2_f(1,4096, CV_32FC1);
-        result_1.convertTo(result_1_f, CV_32FC1);
-        result_2.convertTo(result_2_f, CV_32FC1);
-        //cout<<result_1<<endl;
+        out_bin_1.read((char*)result_1.data, 4096*sizeof(char));        
+        out_bin_2.read((char*)result_2.data, 4096*sizeof(char));        
+        out_bin_1.close();
+        out_bin_2.close();
         printf("       Read results from output file.\n");
+
+        // calculate the similarity
         double cos = getSimilarity(result_1, result_2); 
-        printf("   ##[cos]: %f \n", cos);
+        printf("    ##[cos]: %f \n", cos);
         string result = "different";
         if (cos > THRESHOLD){
             result = "same"; 
         }
         printf("       Save final result into result file.\n");
+
         // save final result into result file
         int name_s, name_e;
         name_s = picture_1.find_last_of("/"); 
@@ -372,8 +367,7 @@ int main(int argc, char* argv[]){
         output_results << picture_1 <<"  "<< picture_2 << "  " << result << endl;
 
         gettimeofday(&end, NULL );  
-        timeuse = 1000000 * ( end.tv_sec - start.tv_sec )
-                + end.tv_usec - start.tv_usec; 
+        timeuse =1000000*(end.tv_sec-start.tv_sec)+end.tv_usec-start.tv_usec; 
         printf("      ##Calculate [result] time: %f\n",timeuse /1000000.0);
 
         // save result in image and show -----------------------------------------
@@ -381,8 +375,7 @@ int main(int argc, char* argv[]){
             printf("     -@@Save the image\n");
             save_img(img_1,img_2, result, "output/"+picture_1+picture_2+".jpg", show_flag);
             gettimeofday(&end, NULL ); 
-            timeuse = 1000000 * ( end.tv_sec - start.tv_sec )
-                    + end.tv_usec - start.tv_usec;  
+            timeuse = 1000000*(end.tv_sec-start.tv_sec)+end.tv_usec-start.tv_usec;  
             printf("      ##Save [image] time %f\n",timeuse /1000000.0); 
         }
     }
@@ -390,8 +383,7 @@ int main(int argc, char* argv[]){
     // finish ---------------------------------------------------------------
     output_results.close();
     gettimeofday(&end, NULL );  
-    timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) 
-            + end.tv_usec - start.tv_usec;  
+    timeuse = 1000000*(end.tv_sec-start.tv_sec)+end.tv_usec-start.tv_usec;  
     printf("=====Finish. [TOTAL] time: %f\n",timeuse /1000000.0); 
 
     return 0;
