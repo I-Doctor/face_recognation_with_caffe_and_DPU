@@ -1,6 +1,0 @@
-./picture/Aaron_Peirsol_0001.jpg ./picture/Aaron_Peirsol_0002.jpg
-./picture/Abdoulaye_Wade_0001.jpg ./picture/Abdoulaye_Wade_0004.jpg
-./picture/Abdullatif_Sener_0001.jpg ./picture/Abdullatif_Sener_0002.jpg
-./picture/Aaron_Peirsol_0001.jpg ./picture/Abdullatif_Sener_0002.jpg
-./picture/Aaron_Peirsol_0002.jpg ./picture/Abdoulaye_Wade_0001.jpg
-./picture/Abdoulaye_Wade_0004.jpg ./picture/Abdullatif_Sener_0001.jpg
