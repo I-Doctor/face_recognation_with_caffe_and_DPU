@@ -1,15 +1,42 @@
 # face_recognation_with_Caffe_and_DPU
-This is a face recognation application programme with CPU caffe implementation or FPGA accelerator via PCIE.
+This is a face recognation application program with CPU caffe implementation or FPGA accelerator via PCIE.
 
 ## Basic info
-The basic algorithm is CNN, VGG-face specifically. And there are three versions of implementation as shown below.
+The basic algorithm is CNN, VGG-face specifically. And there are four versions of implementation as shown below.
 
 ## caffe with CPU
-We put codes and necessary data in caffe_cpu folder. It is programmed with caffe python API, and you may install Caffe and specify the path of Caffe in the file test.py if you want to run.
+The code and necessary data are in the caffe_cpu folder. 
+This program is written with Caffe python API. 
+Which means you need to install Caffe and specify the path of Caffe in the file test.py before running the program with the following command.  
 
-## FPGA accelerator via PCIE
-We implemented a neural network accelerator based on FPGA, and generated the weight file of the neural network and the instruction file needed by the accelerator through our tool chain. These data and the input/output of the network during the running are transmitted through the PCIE bus. Our code is based on the official driver of the PCIE of the FPGA IP provided by Xilinx.
-The interface and control logic of this version are written in python.
+The command to run the program:
+```
+python test.py input_list.txt output/results.out save show
+```
 
-## FPGA accelerator working with multithread CPU
-The acceleration effect of the previous method is good, but the part of the CPU execution is too expensive, which becomes the bottleneck. So we have re-implemented the multi-threaded control program based on C++.
+## FPGA accelerator via PCIE with Python interface
+We developed a neural network accelerator based on Xilinx FPGA, KCU1500 board specifically in this project, and generated the bitstream file of the accelerator, which can be used to configure the hardware. 
+At the same time, using our tool chain and caffe model, we generated the weight file and instruction file of the neural network needed by the accelerator. 
+These data files and the input and output of the neural network are transmitted between the host and the FPGA accelerate board through PCIE bus. 
+Our program is based on Xilinx official PCIE driver and PCIE DMA IP of hardware.  
+
+Bitstream file is stored in bit/ folder.
+Weight and instruction files are stored in tests_python/weight/ folder.
+We haven't offerd our tool chain here.  
+
+The interface and control logic of this version are written in python. And the command to run the program:
+```
+python test.py input_list.txt output/results.out save show
+```
+
+## FPGA accelerator with totaly C++ interface
+The acceleration effect of the previous method is good, but the part of the CPU execution is too expensive, which becomes the bottleneck. So we have re-implemented the top control program with C++.  
+
+There two sub c++ versions in tests_cpp/ folder, one is running in iteration mode which means it will process one pair of picutres and show the result at one time, and the other is running in batch mode which means it will process all pairs of pictures and then calculate them and than output the results.   
+
+The command to run the program:
+```
+./batch_process input_list.txt output/results.out save show
+```
+
+## FPGA accelerator with multithread
