@@ -38,6 +38,10 @@ The command to run the program:
 ```
 ./batch_process input_list.txt output/results.out save show
 ```
+Or:
+```
+./iteration_process input_list.txt output/results.out save show
+```
 
 ## FPGA accelerator with multithread
 In order to further reduce the overhead of CPU processing and improve the average image processing throughput, a C++ multithreaded program based on Linux is implemented.
