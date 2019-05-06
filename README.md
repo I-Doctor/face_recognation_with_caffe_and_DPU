@@ -20,7 +20,7 @@ At the same time, using our tool chain and caffe model, we generated the weight 
 These data files and the input and output of the neural network are transmitted between the host and the FPGA accelerate board through PCIE bus. 
 Our program is based on Xilinx official PCIE driver and PCIE DMA IP of hardware.  
 
-Bitstream file and MCS file are stored in ***bit/*** folder and you can set your KCU1500 hardware with it.
+Bitstream file is stored in ***bit/*** folder and you can set your KCU1500 hardware with it.
 Weight and instruction files are stored in ***weight/*** folder.
 *We haven't offerd our tool chain here.*  
 
