@@ -40,3 +40,11 @@ The command to run the program:
 ```
 
 ## FPGA accelerator with multithread
+In order to further reduce the overhead of CPU processing and improve the average image processing throughput, a C++ multithreaded program based on Linux is implemented.
+
+In addition to the configuration and data input at the beginning of the program, “the image preprocessing”, “transmission & DPU calculation”， “post-processing of the output of the neural network” are encapsulated into three threads, which are executed by multi-threads using pthreads method.
+
+The command to run the program:
+```
+./face_dpu_app input_list.txt output/results.out save show
+```
