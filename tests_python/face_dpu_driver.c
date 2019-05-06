@@ -135,13 +135,13 @@ int main(int argc, char* argv[]){
     if(argc==2 && *(argv[1])=='1') {
         // init =======================================================
         printf("      Write init weights and insts into ddr.\n");
-        test_dma_to_device("/dev/xdma0_h2c_0", WEIT1_DDR_ADDR, 23859120,0,1, "./weight/concat_svd_weight.bin");
-        test_dma_to_device("/dev/xdma0_h2c_0", WEIT2_DDR_ADDR, 23859120,0,1, "./weight/concat_svd_weight.bin");
+        test_dma_to_device("/dev/xdma0_h2c_0", WEIT1_DDR_ADDR, 23859120,0,1, "../weight/concat_svd_weight.bin");
+        test_dma_to_device("/dev/xdma0_h2c_0", WEIT2_DDR_ADDR, 23859120,0,1, "../weight/concat_svd_weight.bin");
         printf("      weight");
         test_dma_to_device("/dev/xdma0_h2c_0", INST1_DDR_ADDR, 257644,
-        0,1, "./weight/concat_svd_instr.bin");
+        0,1, "../weight/concat_svd_instr.bin");
         test_dma_to_device("/dev/xdma0_h2c_0", INST2_DDR_ADDR, 257644,
-        0,1, "./weight/concat_svd_instr.bin");
+        0,1, "../weight/concat_svd_instr.bin");
         printf("      instr \n");
         printf("    ## Finished.\n");
 

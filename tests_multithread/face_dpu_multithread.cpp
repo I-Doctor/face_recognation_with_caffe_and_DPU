@@ -2,13 +2,14 @@
 // (c) Copyright EFC of NICS; Tsinghua University. All rights reserved.
 // Author   : Kai Zhong
 // Email    : zhongk15@mails.tsinghua.edu.cn
-// Create Date   : 2019.03.20
-// File Name     : dpu_face_application.cpp
+// Create Date   : 2019.04.25
+// File Name     : dpu_face_multithread.cpp
 // Description   : read pairs of picture name and process them with dpu
 //                 then get the result of face recognation and write 
 //                 into the result file or save in picture.
 // Dependencies  : opencv 2.4.9
 //                 g++
+//                 pthread
 //=====================================================================
 
 //---------------------------------------------------------------------
@@ -69,8 +70,8 @@ using namespace cv;
 
 /* customized definations which can be changed according to different app */
 #define THRESHOLD 0.29
-#define WEIT_FILE_NAME "./weight/concat_svd_weight.bin"
-#define INST_FILE_NAME "./weight/concat_svd_instr.bin"
+#define WEIT_FILE_NAME "../weight/concat_svd_weight.bin"
+#define INST_FILE_NAME "../weight/concat_svd_instr.bin"
 
 /* define of some simple functions */
 /* ltoh: little to host   htol: little to host */

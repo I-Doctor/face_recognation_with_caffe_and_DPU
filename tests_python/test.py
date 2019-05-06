@@ -14,7 +14,7 @@ import sklearn.metrics.pairwise as pw
 caffe_root = '/home/zk/workspace/installcaffe/caffe'
 sys.path.insert(0,caffe_root)
 import caffe
-work_root = '/home/zk/workspace/15suo/Xilinx_Answer_65444_Linux_Files/tests_optimize/'
+work_root = '/home/zk/workspace/Xilinx_Answer_65444_Linux_Files/tests_python/'
 
 
 
