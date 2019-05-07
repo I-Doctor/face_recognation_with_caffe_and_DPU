@@ -4,7 +4,7 @@ This is a face recognation application program with CPU caffe implementation or 
 ## Basic info
 The basic algorithm is CNN, VGG-face specifically. And there are four versions of implementation as shown below. The basic process of the program is to read in the face picture pairs of the specified paths through the input text file, and then get two vectors after calculating by the neural network, and use the comparison of the inner product of the vectors and the threshold value to determine whether they belong to the same person or not.  
 
-In order to run DPU-based versions, it is necessary to install Xilinx's official PICE driver(reference to the official website: AR# 65444 Xilinx PCI Express DMA Drivers and Software Guide) and test it according to its instructions, then copy our corresponding folder to the official driver folder(Xilinx_Answer_65444_Linux_Files) and level with the original test folder, and then compile and run our program.
+In order to run DPU-based versions, it is necessary to install Xilinx's official PICE driver(reference to the official website: AR# 65444 Xilinx PCI Express DMA Drivers and Software Guide) and test it according to its instructions, and then compile and run our program. If it doesn't work because of some driver mistake you may try to copy our program to under the official driver path and level with the original ***test/*** folder ,load and test driver in our folder then try again.
 
 ## Caffe with CPU
 The code and necessary data are in the ***caffe_cpu/*** folder. 
